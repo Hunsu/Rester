@@ -29,7 +29,7 @@ class HttpClient(object):
         self.logger.debug('Status: %s', response.status_code)
         self.log_headers(response.headers)
         if is_raw:
-            self.logger.debug('Response:\n%s\n' + response.text)
+            self.logger.debug('Response:\n%s\n', response.text)
         else:
             self.logger.debug('Response:\n%s\n', json.dumps(payload, sort_keys=True, indent=2))
 

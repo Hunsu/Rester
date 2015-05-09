@@ -26,15 +26,16 @@ class HttpClient(object):
             payload = {"__raw__": response.text}
         else:    
             payload = response.json()
-
-        if response.status_code < 300:
-            emit = self.logger.debug
-        else:
-            emit = self.logger.warn
-        emit('Response Headers: %s', str(response.headers))
+        self.logger.debug('Status: %s', response.status_code)
+        self.log_headers(response.headers)
         if is_raw:
-            emit('Response:\n%s\n' + response.text)
+            self.logger.debug('Response:\n%s\n' + response.text)
         else:
-            emit('Response:\n%s\n' + json.dumps(payload, sort_keys=True, indent=2))
+            self.logger.debug('Response:\n%s\n', json.dumps(payload, sort_keys=True, indent=2))
 
         return ResponseWrapper(response.status_code, payload, response.headers)
+    
+    def log_headers(self, headers):
+        for header in headers:
+            self.logger.debug('Header: %s = %s', header, headers[header])
+

@@ -5,6 +5,7 @@ from testfixtures import log_capture
 import collections
 import re
 import traceback
+import jsonpickle
 
 
 Failure = collections.namedtuple("Failure", "errors output")
@@ -70,6 +71,7 @@ class TestCaseExec(object):
         failures = Failure([], None)
         try:
             method = getattr(test_step, 'method', 'get')
+            data = getattr(test_step, 'data', None)
             is_raw = getattr(test_step, 'raw', False)
             self.logger.info('\n=======> Executing TestStep : %s, method : %s', test_step.name, method)
 
@@ -85,14 +87,17 @@ class TestCaseExec(object):
 
             url = self.case.variables.expand(test_step.apiUrl)
             self.logger.debug('Evaluated URL : %s', url)
-            response_wrapper = http_client.request(url, method, headers, params, is_raw)
-
-            # expected_status = getattr(getattr(test_step, 'asserts'), 'status', 200)
-            # if response_wrapper.status != expected_status:
-            #     failures.errors.append("status(%s) != expected status(%s)" % (response_wrapper.status, expected_status))
+            response_wrapper = http_client.request(url, method, headers, params, data, is_raw)
+            
+            if hasattr(test_step, 'log'):
+                self._log(test_step, test_step.log, response_wrapper)
 
             if hasattr(test_step, "asserts"):
                 asserts = test_step.asserts
+                if hasattr(asserts, 'status'):
+                    expected_status = getattr(asserts, status)
+                    if response_wrapper.status != expected_status:
+                        failures.errors.append("status(%s) != expected status(%s)" % (response_wrapper.status, expected_status))
                 if hasattr(asserts, "headers"):
                     self._assert_element_list('Header', failures, test_step, response_wrapper.headers, test_step.asserts.headers.items().items())
 
@@ -197,6 +202,17 @@ class TestCaseExec(object):
     def _process_post_asserts(self, response, key, value):
         self.logger.debug("evaled value: {}".format(getattr(response, value, '')))
         self.case.variables.add_variable(key, getattr(response, value, ''))
+       
+    def _log(self,test_step, log, response):
+        print '######## LOG for %s #########' % test_step.name
+        if hasattr(log, 'headers'):
+            print 'Headers'
+            for header in log.headers:
+                print '%s = %s' % (header, getattr(response.headers, header, ''))
+        if hasattr(log, 'body'):
+            print 'Response body'
+            if log.body == 'all':
+                print 'Response %s : ' % response.body.__dict__
 
 def _evaluate(clause, value):
     assert_expr = 'result = {0}'.format(clause)
